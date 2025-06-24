@@ -1,18 +1,50 @@
 import streamlit as st
+import pandas as pd
 from sqlalchemy import create_engine
-import psycopg2
 
+# Load secrets
 db = st.secrets["database"]
 
-connection_string = (
-    f"postgresql+psycopg2://{db['user']}:{db['password']}@{db['host']}:{db['port']}/{db['database']}"
+# Build the pooler-based connection string
+engine = create_engine(
+    f"postgresql+psycopg2://{db['user']}:{db['password']}"
+    f"@{db['host']}:{db['port']}/{db['database']}"
 )
 
-st.write("🔌 Connecting to the database...")
+# Ensure table exists
+with engine.begin() as conn:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS inventory (
+            id SERIAL PRIMARY KEY,
+            item_name TEXT NOT NULL,
+            quantity INT NOT NULL,
+            category TEXT
+        )
+    """)
 
-try:
-    engine = create_engine(connection_string)
-    with engine.connect() as conn:
-        st.success("✅ Connected to the database successfully!")
-except Exception as e:
-    st.error(f"❌ Database connection failed:\n\n{e}")
+st.title("🌐 Online Inventory (Supabase Pooler)")
+
+# Add New Item
+with st.form("add_form"):
+    name = st.text_input("Item Name")
+    qty = st.number_input("Quantity", min_value=1)
+    cat = st.text_input("Category")
+    if st.form_submit_button("Add Item") and name:
+        with engine.begin() as conn:
+            conn.execute(
+                "INSERT INTO inventory (item_name, quantity, category) VALUES (%s, %s, %s)",
+                (name, qty, cat)
+            )
+        st.success("Added!")
+
+# Display Inventory
+df = pd.read_sql("SELECT * FROM inventory", engine)
+st.dataframe(df)
+
+# Delete Item
+if not df.empty:
+    item_id = st.selectbox("Delete item ID", df["id"])
+    if st.button("Delete"):
+        with engine.begin() as conn:
+            conn.execute("DELETE FROM inventory WHERE id = %s", (item_id,))
+        st.success("Deleted!")
