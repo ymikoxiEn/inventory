@@ -2,7 +2,8 @@ import streamlit as st
 import requests
 import pandas as pd
 
-API_URL = "API_URL = "https://your-backend.onrender.com"
+API_URL = "https://your-backend.onrender.com"
+
 
 
 st.title("📦 Inventory Dashboard")
