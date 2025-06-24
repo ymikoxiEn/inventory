@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -15,7 +15,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATABASE_URL = os.getenv("postgresql://postgres.elccunyrslwitjescdvn:kokorokoko123@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres")
+# ✅ Corrected direct connection string
+DATABASE_URL = "postgresql://postgres.elccunyrslwitjescdvn:kokorokoko123@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
+
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
