@@ -11,16 +11,6 @@ engine = create_engine(
     f"@{db['host']}:{db['port']}/{db['database']}"
 )
 
-# Ensure table exists
-with engine.begin() as conn:
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS inventory (
-            id SERIAL PRIMARY KEY,
-            item_name TEXT NOT NULL,
-            quantity INT NOT NULL,
-            category TEXT
-        )
-    """)
 
 st.title("🌐 Online Inventory (Supabase Pooler)")
 
