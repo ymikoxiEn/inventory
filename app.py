@@ -1,52 +1,52 @@
 import streamlit as st
-import sqlite3
 import pandas as pd
+from sqlalchemy import create_engine
 
-# --- Database Setup ---
-conn = sqlite3.connect("inventory.db", check_same_thread=False)
-c = conn.cursor()
+# Load secrets
+db = st.secrets["database"]
 
-c.execute("""
-    CREATE TABLE IF NOT EXISTS inventory (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        item_name TEXT NOT NULL,
-        quantity INTEGER NOT NULL,
-        category TEXT
-    )
-""")
-conn.commit()
+# Connect to Supabase PostgreSQL
+engine = create_engine(
+    f"postgresql+psycopg2://{db['user']}:{db['password']}@{db['host']}:{db['port']}/{db['database']}"
+)
+
+# Create table if not exists
+with engine.begin() as conn:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS inventory (
+            id SERIAL PRIMARY KEY,
+            item_name TEXT NOT NULL,
+            quantity INT NOT NULL,
+            category TEXT
+        )
+    """)
 
 # --- UI ---
-st.title("📦 Simple Inventory System")
+st.title("🌐 Online Inventory System (Supabase)")
 
-# --- Add Item ---
-with st.form("add_form"):
-    st.subheader("Add New Item")
-    item_name = st.text_input("Item Name")
-    quantity = st.number_input("Quantity", min_value=1, step=1)
-    category = st.text_input("Category")
-    submitted = st.form_submit_button("Add Item")
+# Add Item
+with st.form("add_item"):
+    name = st.text_input("Item Name")
+    qty = st.number_input("Quantity", min_value=1)
+    cat = st.text_input("Category")
+    submit = st.form_submit_button("Add Item")
 
-    if submitted:
-        if item_name:
-            c.execute("INSERT INTO inventory (item_name, quantity, category) VALUES (?, ?, ?)",
-                      (item_name, quantity, category))
-            conn.commit()
-            st.success(f"'{item_name}' added to inventory.")
-        else:
-            st.warning("Item name is required.")
+    if submit and name:
+        with engine.begin() as conn:
+            conn.execute(
+                "INSERT INTO inventory (item_name, quantity, category) VALUES (%s, %s, %s)",
+                (name, qty, cat)
+            )
+        st.success("Item added!")
 
-# --- View Inventory ---
-st.subheader("📋 Inventory List")
-df = pd.read_sql("SELECT * FROM inventory", conn)
+# View Inventory
+df = pd.read_sql("SELECT * FROM inventory", engine)
 st.dataframe(df)
 
-# --- Delete Item ---
-st.subheader("🗑️ Delete Item")
-item_to_delete = st.selectbox("Select Item ID to Delete", df['id'] if not df.empty else [0])
-if st.button("Delete"):
-    c.execute("DELETE FROM inventory WHERE id = ?", (item_to_delete,))
-    conn.commit()
-    st.success(f"Item ID {item_to_delete} deleted.")
-
-conn.close()
+# Delete Item
+if not df.empty:
+    item_id = st.selectbox("Select ID to delete", df["id"])
+    if st.button("Delete"):
+        with engine.begin() as conn:
+            conn.execute("DELETE FROM inventory WHERE id = %s", (item_id,))
+        st.success("Item deleted.")
