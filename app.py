@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 # Load secrets
 db = st.secrets["database"]
@@ -10,7 +10,6 @@ engine = create_engine(
     f"postgresql+psycopg2://{db['user']}:{db['password']}"
     f"@{db['host']}:{db['port']}/{db['database']}"
 )
-
 
 st.title("🌐 Online Inventory (Supabase Pooler)")
 
@@ -22,8 +21,8 @@ with st.form("add_form"):
     if st.form_submit_button("Add Item") and name:
         with engine.begin() as conn:
             conn.execute(
-                "INSERT INTO inventory (item_name, quantity, category) VALUES (%s, %s, %s)",
-                (name, qty, cat)
+                text("INSERT INTO inventory (item_name, quantity, category) VALUES (:name, :qty, :cat)"),
+                {"name": name, "qty": qty, "cat": cat}
             )
         st.success("Added!")
 
@@ -36,5 +35,8 @@ if not df.empty:
     item_id = st.selectbox("Delete item ID", df["id"])
     if st.button("Delete"):
         with engine.begin() as conn:
-            conn.execute("DELETE FROM inventory WHERE id = %s", (item_id,))
+            conn.execute(
+                text("DELETE FROM inventory WHERE id = :id"),
+                {"id": item_id}
+            )
         st.success("Deleted!")
